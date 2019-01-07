@@ -12,7 +12,7 @@ class Scenario(BaseScenario):
         world.num_agents = 4
         world.num_goals = 4
         # world.num_obstacles = 2
-        world.num_obstacles = 0
+        world.num_obstacles = 2
         world.collaborative = True
         # self.landmarkspeed = np.random.normal(size=2)
         # add agents
@@ -102,7 +102,7 @@ class Scenario(BaseScenario):
         rew = 0
         coef_collision = 1.0
         coef_dist = 1.0
-        coef_cosdist = 0.2
+        coef_cosdist = 0.3
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 dists = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
@@ -146,4 +146,4 @@ class Scenario(BaseScenario):
             comm.append(other.state.c)
             other_pos.append(other.state.p_pos - agent.state.p_pos)
         return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + other_pos + comm)
-        
+       
