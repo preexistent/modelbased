@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--num-units", type=int, default=64, help="number of units in the mlp")
     # Checkpointing
     parser.add_argument("--exp-name", type=str, default=None, help="name of the experiment")
-    parser.add_argument("--save-dir", type=str, default="/tmp/policy/", help="directory in which training state and model should be saved")
+    parser.add_argument("--save-dir", type=str, default="./temp/policy", help="directory in which training state and model should be saved")
     parser.add_argument("--save-rate", type=int, default=1000, help="save model once every time this many episodes are completed")
     parser.add_argument("--load-dir", type=str, default="", help="directory in which training state and model are loaded")
     # Evaluation
@@ -105,7 +105,7 @@ def train(arglist):
         episode_step = 0
         train_step = 0
         t_start = time.time()
-  
+
         print('Starting iterations...')
         while True:
             # get action
@@ -178,15 +178,15 @@ def train(arglist):
                     final_ep_ag_rewards.append(np.mean(rew[-arglist.save_rate:]))
 
             # saves final episode reward for plotting training curve later
-            #if len(episode_rewards) > arglist.num_episodes:
-            rew_file_name = arglist.plots_dir + arglist.exp_name + '_rewards.pkl'
-            with open(rew_file_name, 'wb') as fp:
-                pickle.dump(final_ep_rewards, fp)
-            agrew_file_name = arglist.plots_dir + arglist.exp_name + '_agrewards.pkl'
-            with open(agrew_file_name, 'wb') as fp:
-                pickle.dump(final_ep_ag_rewards, fp)
-            print('...Finished total of {} episodes.'.format(len(episode_rewards)))
-                #break
+            if len(episode_rewards) > arglist.num_episodes:
+                rew_file_name = arglist.plots_dir + arglist.exp_name + '_rewards.pkl'
+                with open(rew_file_name, 'wb') as fp:
+                    pickle.dump(final_ep_rewards, fp)
+                agrew_file_name = arglist.plots_dir + arglist.exp_name + '_agrewards.pkl'
+                with open(agrew_file_name, 'wb') as fp:
+                    pickle.dump(final_ep_ag_rewards, fp)
+                print('...Finished total of {} episodes.'.format(len(episode_rewards)))
+                break
 
 if __name__ == '__main__':
     arglist = parse_args()
