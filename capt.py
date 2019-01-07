@@ -12,7 +12,7 @@ class Scenario(BaseScenario):
         world.num_agents = 4
         world.num_goals = 4
         # world.num_obstacles = 2
-        world.num_obstacles = 2
+        world.num_obstacles = 0
         world.collaborative = True
         # self.landmarkspeed = np.random.normal(size=2)
         # add agents
@@ -24,12 +24,13 @@ class Scenario(BaseScenario):
             agent.size = 0.1
         # add goals
         world.landmarks = [Landmark() for i in range(world.num_goals+world.num_obstacles)]
+        p_vel = np.random.normal(size=2)
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 landmark.name = 'goal %d' %i
                 landmark.collide = False
                 landmark.movable = False
-                landmark.state.p_vel = np.random.normal(size=2)
+                landmark.state.p_vel = p_vel
             else:
                 landmark.name = 'obstacle %d' %(i-world.num_goals)
                 landmark.collide = True
@@ -45,11 +46,12 @@ class Scenario(BaseScenario):
             agent.state.c = np.zeros(world.dim_c)
             agent.color = np.array([0.35, 0., 0.])
         # random properties for landmarks
+        p_vel = np.random.normal(size=2)
         for i, landmark in enumerate(world.landmarks):
             landmark.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             if i <world.num_goals:
                 landmark.color = np.array([0., .35, 0.])
-                landmark.state.p_vel = np.random.normal(size=2)
+                landmark.state.p_vel = p_vel
                 '''
                 Initialize velocity vectors for different landmarks
                 landmark.p_vel = np.array([1,1])
@@ -98,9 +100,9 @@ class Scenario(BaseScenario):
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
         rew = 0
-        coef_collision = 1.1
+        coef_collision = 1.0
         coef_dist = 1.0
-        coef_cosdist = 0.
+        coef_cosdist = 0.2
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 dists = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
