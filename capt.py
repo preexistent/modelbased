@@ -12,7 +12,7 @@ class Scenario(BaseScenario):
         world.num_agents = 4
         world.num_goals = 4
         # world.num_obstacles = 2
-        world.num_obstacles = 0
+        world.num_obstacles = 2
         world.collaborative = True
         # self.landmarkspeed = np.random.normal(size=2)
         # add agents
@@ -98,7 +98,7 @@ class Scenario(BaseScenario):
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
         rew = 0
-        coef_collision = 0.
+        coef_collision = 1.1
         coef_dist = 1.0
         coef_cosdist = 0.
         for i, landmark in enumerate(world.landmarks):
