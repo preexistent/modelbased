@@ -77,6 +77,12 @@ def get_trainers(env, num_adversaries, obs_shape_n, arglist):
 
 def train(arglist):
     with U.single_threaded_session():
+        #tensorboard
+        summary_writer = tf.summary.FileWriter("./graph/", U.get_session().graph)
+        reward_plot = None
+        reward_summary = tf.Summary()
+        reward_summary.value.add(tag='reward', simple_value=reward_plot)
+
         # Create environment
         env = make_env(arglist.scenario, arglist, arglist.benchmark)
         # Create agent trainers
@@ -160,6 +166,10 @@ def train(arglist):
             for agent in trainers:
                 loss = agent.update(trainers, train_step)
 
+            # add reward to tensorboard
+            reward_summary.value[0].simple_value = np.mean(episode_rewards[-arglist.save_rate:])
+            summary_writer.add_summary(reward_summary, len(episode_rewards))
+
             # save model, display training output
             if terminal and (len(episode_rewards) % arglist.save_rate == 0):
                 U.save_state(arglist.save_dir, saver=saver)
@@ -171,6 +181,8 @@ def train(arglist):
                     print("steps: {}, episodes: {}, mean episode reward: {}, agent episode reward: {}, time: {}".format(
                         train_step, len(episode_rewards), np.mean(episode_rewards[-arglist.save_rate:]),
                         [np.mean(rew[-arglist.save_rate:]) for rew in agent_rewards], round(time.time()-t_start, 3)))
+
+
                 t_start = time.time()
                 # Keep track of final episode reward
                 final_ep_rewards.append(np.mean(episode_rewards[-arglist.save_rate:]))
