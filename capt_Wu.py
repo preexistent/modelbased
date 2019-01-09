@@ -44,15 +44,16 @@ class Scenario(BaseScenario):
             agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             agent.state.p_vel = np.random.normal(size=2)
             agent.state.c = np.zeros(world.dim_c)
-            agent.color = np.array([0.35, 0., 0.])
+            agent.color = np.array([0.35, i/10, 0.])
         # random properties for landmarks
         p_vel = np.random.normal(size=2)
-        pos_y_choice = np.arange(-1,1,0.08)
+        pos_y_choice = np.arange(-1,1,0.20)
         pos_y=np.random.choice(pos_y_choice, 6, replace= False)
         for i, landmark in enumerate(world.landmarks):
             landmark.state.p_pos = np.asarray([np.random.uniform(-1, +1, 1),pos_y[i]],dtype=np.float64)
             if i <world.num_goals:
                 landmark.color = np.array([0., .35, 0.])
+                landmark.color_ind = np.array([0,1])
                 landmark.state.p_vel = p_vel
                 '''
                 Initialize velocity vectors for different landmarks
@@ -60,6 +61,7 @@ class Scenario(BaseScenario):
                 '''
             else:
                 landmark.color = np.array([0., 0., .35])
+                landmark.color_ind = np.array([1,0])
         # set random initial states
         # for agent in world.agents:
         #     agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
@@ -110,21 +112,24 @@ class Scenario(BaseScenario):
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
         rew = 0
+        rew_dist = 0
+        rew_collision = 0
+        rew_cos_dist = 0
         coef_collision = 1
         coef_dist = 1
-        coef_cosdist = 0.5
+        coef_cosdist = 1
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 dists = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
-                rew -= min(dists) * coef_dist
+                rew_dist -= min(dists) * coef_dist
             else:
                 if agent.collide:
                     # if self.is_collision(agent, landmark):
-                    rew -= self.is_collision(agent, landmark) * coef_collision
+                    rew_collision -= self.is_collision(agent, landmark) * coef_collision
         if agent.collide:
             for a in world.agents:
                 # if self.is_collision(a, agent):
-                rew -= self.is_collision(a, agent) * coef_collision
+                rew_collision-= self.is_collision(a, agent) * coef_collision
         '''
             We can modify this part to include velocity direction into the model.
             Compute cosine distance between agent velocity and landmark velocity.
@@ -143,7 +148,14 @@ class Scenario(BaseScenario):
             if i <world.num_goals:
                 # cos_dist = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
                 cos_dist.append(spatial.distance.cosine(agent.state.p_vel, landmark.state.p_vel))
-        rew -= min(cos_dist) * coef_cosdist
+        rew_cos_dist -= min(cos_dist) * coef_cosdist / (-rew_dist)
+
+        rew = rew_collision + rew_cos_dist + rew_dist
+        # if agent.name == 'agent 0':
+        #     # print('distance reward', rew_dist)
+        #     # print('collision reward', rew_collision)
+        #     # print('cos distance reward', rew_cos_dist)
+        #     # print('reward sum', rew_cos_dist + rew_dist)
 
         return rew
 
@@ -158,7 +170,7 @@ class Scenario(BaseScenario):
         # entity colors
         entity_color = []
         for entity in world.landmarks:  # world.entities:
-            entity_color.append(entity.color)
+            entity_color.append(entity.color_ind)
         # communication of all other agents
         comm = []
         other_pos = []
@@ -166,5 +178,5 @@ class Scenario(BaseScenario):
             if other is agent: continue
             comm.append(other.state.c)
             other_pos.append(other.state.p_pos - agent.state.p_pos)
-        return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + entity_vel +  other_pos + comm)
+        return np.concatenate([agent.state.p_vel] + entity_color+[agent.state.p_pos] + entity_pos + entity_vel +  other_pos + comm)
        
