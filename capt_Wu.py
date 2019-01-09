@@ -112,7 +112,7 @@ class Scenario(BaseScenario):
         rew = 0
         coef_collision = 1
         coef_dist = 1
-        coef_cosdist = 1.5
+        coef_cosdist = 0.5
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 dists = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
