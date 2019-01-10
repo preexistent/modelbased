@@ -1,2 +1,2 @@
-model_checkpoint_path: "policy"
-all_model_checkpoint_paths: "policy"
+model_checkpoint_path: "temp_chi"
+all_model_checkpoint_paths: "temp_chi"
