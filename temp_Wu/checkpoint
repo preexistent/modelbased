@@ -1,2 +1,2 @@
-model_checkpoint_path: "capt_128"
-all_model_checkpoint_paths: "capt_128"
+model_checkpoint_path: "capt_higher"
+all_model_checkpoint_paths: "capt_higher"
