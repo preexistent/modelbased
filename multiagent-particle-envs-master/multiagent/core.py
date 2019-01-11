@@ -58,7 +58,8 @@ class Entity(object):
 
     @property
     def momentum_mass(self):
-        return np.pi/4*self.size**4*self.initial_mass
+        # return np.pi/4*self.size**4*self.initial_mass
+        return 1.0
 
 # properties of landmark entities
 class Landmark(Entity):
@@ -179,7 +180,7 @@ class World(object):
             entity.state.p_angle_vel = entity.state.p_angle_vel*(1-self.damping)
             if (p_force[i] is not None):
                 entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
-                entity.state.p_angle_vel += (p_rot_force[i] / entity.momentum_mass) * self.dt
+                entity.state.p_angle_vel += (1.5*p_rot_force[i] / entity.momentum_mass) * self.dt
             if entity.max_speed is not None:
                 speed = np.sqrt(np.square(entity.state.p_vel[0]) + np.square(entity.state.p_vel[1]))
                 if speed > entity.max_speed:

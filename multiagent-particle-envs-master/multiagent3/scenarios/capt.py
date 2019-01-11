@@ -24,15 +24,12 @@ class Scenario(BaseScenario):
             agent.size = 0.1
         # add goals
         world.landmarks = [Landmark() for i in range(world.num_goals+world.num_obstacles)]
-        p_vel = np.zeros(2)
-        p_angle = np.random.uniform(size=1)
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 landmark.name = 'goal %d' %i
                 landmark.collide = False
                 landmark.movable = False
-                landmark.state.p_vel = p_vel
-                landmark.state.p_angle = p_angle
+                landmark.state.p_vel = np.random.normal(size=2)
             else:
                 landmark.name = 'obstacle %d' %(i-world.num_goals)
                 landmark.collide = True
@@ -44,29 +41,21 @@ class Scenario(BaseScenario):
         # random properties for agents
         for i, agent in enumerate(world.agents):
             agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
-            agent.state.p_vel = np.zeros(2)
-            # for rotation
-            agent.state.p_angle = np.random.uniform(0, 2*math.pi,1)
-            agent.state.p_angle_vel =0
+            agent.state.p_vel = np.random.normal(size=2)
             agent.state.c = np.zeros(world.dim_c)
-            agent.color = np.array([0.35, i/10, 0.])
+            agent.color = np.array([0.35, 0., 0.])
         # random properties for landmarks
-        landmark_angle = np.random.uniform(0, 2*math.pi, 1)
-        pos_y_choice = np.arange(-1,1,0.20)
-        pos_y=np.random.choice(pos_y_choice, 6, replace= False)
         for i, landmark in enumerate(world.landmarks):
-            landmark.state.p_pos = np.asarray([np.random.uniform(-1, +1, 1),pos_y[i]],dtype=np.float64)
+            landmark.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             if i <world.num_goals:
                 landmark.color = np.array([0., .35, 0.])
-                landmark.color_ind = np.array([0,1])
-                landmark.state.p_angle = landmark_angle
+                landmark.state.p_vel = np.random.normal(size=2)
                 '''
                 Initialize velocity vectors for different landmarks
                 landmark.p_vel = np.array([1,1])
                 '''
             else:
                 landmark.color = np.array([0., 0., .35])
-                landmark.color_ind = np.array([1,0])
         # set random initial states
         # for agent in world.agents:
         #     agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
@@ -101,40 +90,29 @@ class Scenario(BaseScenario):
         return (rew, collisions, min_dists, occupied_landmarks)
     
     def is_collision(self, agent1, agent2):
-        # delta_pos = agent1.state.p_pos - agent2.state.p_pos
-        # dist = np.sqrt(np.sum(np.square(delta_pos)))
-        # dist_min = agent1.size + agent2.size
-        # return True if dist < dist_min else False
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
         dist = np.sqrt(np.sum(np.square(delta_pos)))
         dist_min = agent1.size + agent2.size
-        if dist > dist_min and dist < 2 * dist_min:
-            return dist_min / (dist+1e-8)
-        elif dist <= dist_min:
-            return 1
-        else:
-            return 0
+        return True if dist < dist_min else False
+    
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
         rew = 0
-        rew_dist = 0
-        rew_collision = 0
-        rew_cos_dist = 0
-        coef_collision = 1
-        coef_dist = 1
-        coef_cosdist = 1
+        coef_collision = 1.1
+        coef_dist = 1.0
+        coef_cosdist = 0.
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 dists = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
-                rew_dist -= min(dists) * coef_dist
+                rew -= min(dists) * coef_dist
             else:
                 if agent.collide:
-                    # if self.is_collision(agent, landmark):
-                    rew_collision -= self.is_collision(agent, landmark) * coef_collision
+                    if self.is_collision(agent, landmark):
+                        rew -= 1 * coef_collision
         if agent.collide:
             for a in world.agents:
-                # if self.is_collision(a, agent):
-                rew_collision-= self.is_collision(a, agent) * coef_collision
+                if self.is_collision(a, agent):
+                    rew -= 1 * coef_collision
         '''
             We can modify this part to include velocity direction into the model.
             Compute cosine distance between agent velocity and landmark velocity.
@@ -142,41 +120,22 @@ class Scenario(BaseScenario):
             As the distance increase, the reward should decrease, so we should 
             rew -=  const*distance.
         '''
-        # for i, landmark in enumerate(world.landmarks):
-        #     if i <world.num_goals:
-        #         # cos_dist = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
-        #         cos_dist = [spatial.distance.cosine(a.state.p_vel, landmark.state.p_vel) for a in world.agents]
-        #         rew -= min(cos_dist) * coef_cosdist
-        
-        cos_dist = []
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 # cos_dist = [np.sqrt(np.sum(np.square(a.state.p_pos - landmark.state.p_pos))) for a in world.agents]
-                diff_angle = abs(agent.state.p_angle-landmark.state.p_angle)
-                cos_dist.append(np.pi - abs(diff_angle-np.pi))
-        rew_cos_dist -= min(cos_dist) * coef_cosdist
-
-        rew = rew_collision + rew_cos_dist + rew_dist
-        # if agent.name == 'agent 0':
-        #     # print('distance reward', rew_dist)
-        #     # print('collision reward', rew_collision)
-        #     # print('cos distance reward', rew_cos_dist)
-        #     # print('reward sum', rew_cos_dist + rew_dist)
-
+                cos_dist = [spatial.distance.cosine(a.state.p_vel, landmark.state.p_vel) for a in world.agents]
+                rew -= min(cos_dist) * coef_cosdist
         return rew
 
     def observation(self, agent, world):
         # get positions of all entities in this agent's reference frame
         entity_pos = []
-        entity_vel = []
-        for i, entity in enumerate(world.landmarks):  # world.entities:
+        for entity in world.landmarks:  # world.entities:
             entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-            if i <world.num_goals: 
-                entity_vel.append(entity.state.p_vel-agent.state.p_vel)
         # entity colors
         entity_color = []
         for entity in world.landmarks:  # world.entities:
-            entity_color.append(entity.color_ind)
+            entity_color.append(entity.color)
         # communication of all other agents
         comm = []
         other_pos = []
@@ -184,12 +143,4 @@ class Scenario(BaseScenario):
             if other is agent: continue
             comm.append(other.state.c)
             other_pos.append(other.state.p_pos - agent.state.p_pos)
-        # for rotation
-        entity_angle=[]
-        for i, entity in enumerate(world.landmarks):
-            if i < world.num_goals:
-                #print("entity angle : {}, agent angle : {}".format(entity.state.p_angle, agent.state.p_angle))
-                temp_angle = np.append(entity.state.p_angle-agent.state.p_angle, 0)
-                entity_angle.append(temp_angle)
-        return np.concatenate([agent.state.p_vel] +entity_angle +entity_color+[agent.state.p_pos] + entity_pos + entity_vel +  other_pos + comm)
-       
+        return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + other_pos + comm)
