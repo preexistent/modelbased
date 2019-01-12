@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--good-policy", type=str, default="maddpg", help="policy for good agents")
     parser.add_argument("--adv-policy", type=str, default="maddpg", help="policy of adversaries")
     # Core training parameters
-    parser.add_argument("--lr", type=float, default=1e-2, help="learning rate for Adam optimizer")
+    parser.add_argument("--lr", type=float, default=2e-3, help="learning rate for Adam optimizer")
     parser.add_argument("--gamma", type=float, default=0.95, help="discount factor")
     parser.add_argument("--batch-size", type=int, default=1024, help="number of episodes to optimize at the same time")
     parser.add_argument("--num-units", type=int, default=64, help="number of units in the mlp")
@@ -77,6 +77,12 @@ def get_trainers(env, num_adversaries, obs_shape_n, arglist):
 
 def train(arglist):
     with U.single_threaded_session():
+        #tensorboard
+        summary_writer = tf.summary.FileWriter("./"+arglist.exp_name +"_graph/", U.get_session().graph)
+        reward_plot = None
+        reward_summary = tf.Summary()
+        reward_summary.value.add(tag='reward', simple_value=reward_plot)
+
         # Create environment
         env = make_env(arglist.scenario, arglist, arglist.benchmark)
         # Create agent trainers
@@ -111,7 +117,7 @@ def train(arglist):
             # get action
             action_n = [agent.action(obs) for agent, obs in zip(trainers,obs_n)]
             # environment step
-            new_obs_n, rew_n, done_n, info_n = env.step(action_n)
+            new_obs_n, rew_n, done_n, info_n,rvo = env.step(action_n)
             episode_step += 1
             done = all(done_n)
             terminal = (episode_step >= arglist.max_episode_len)
@@ -148,10 +154,13 @@ def train(arglist):
                 continue
 
             # for displaying learned policies
-            if arglist.display:
+            if arglist.display :
                 time.sleep(0.1)
                 env.render()
                 continue
+            if len(episode_rewards) % arglist.save_rate == 0:
+                time.sleep(0.1)
+                env.render()
 
             # update all trainers, if not in display or benchmark mode
             loss = None
@@ -159,6 +168,10 @@ def train(arglist):
                 agent.preupdate()
             for agent in trainers:
                 loss = agent.update(trainers, train_step)
+
+            # add reward to tensorboard
+            reward_summary.value[0].simple_value = np.mean(episode_rewards[-arglist.save_rate:])
+            summary_writer.add_summary(reward_summary, len(episode_rewards))
 
             # save model, display training output
             if terminal and (len(episode_rewards) % arglist.save_rate == 0):
@@ -171,7 +184,10 @@ def train(arglist):
                     print("steps: {}, episodes: {}, mean episode reward: {}, agent episode reward: {}, time: {}".format(
                         train_step, len(episode_rewards), np.mean(episode_rewards[-arglist.save_rate:]),
                         [np.mean(rew[-arglist.save_rate:]) for rew in agent_rewards], round(time.time()-t_start, 3)))
+
+
                 t_start = time.time()
+            if terminal:
                 # Keep track of final episode reward
                 final_ep_rewards.append(np.mean(episode_rewards[-arglist.save_rate:]))
                 for rew in agent_rewards:
@@ -190,13 +206,4 @@ def train(arglist):
 
 if __name__ == '__main__':
     arglist = parse_args()
-    # arglist.scenario = 'capt_Wu'
-    # arglist.display = False
-    # arglist.num_units= 128
-    # arglist.load_dir = './temp_Wu'
-    # # arglist.load_dir2 = './temp_orientation/policy'
-    # arglist.exp_name = 'test1/'
-    # arglist.max_episode_len =100
-    # arglist.num_episodes =6000
-    # arglist.save_dir ='./temp/policy'
     train(arglist)
