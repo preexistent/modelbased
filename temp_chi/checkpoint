@@ -1,2 +1,2 @@
-model_checkpoint_path: "capt_bigger"
-all_model_checkpoint_paths: "capt_bigger"
+model_checkpoint_path: "capt_col"
+all_model_checkpoint_paths: "capt_col"
