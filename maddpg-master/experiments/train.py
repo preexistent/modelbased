@@ -242,10 +242,5 @@ def train(arglist):
 
 if __name__ == '__main__':
     arglist = parse_args()
-    arglist.exp_name = 'demo'
-    arglist.save_dir = arglist.save_dir + arglist.exp_name
-    arglist.max_episode_len = 20
-    arglist.num_episodes = 10000
-    arglist.num_units = 64
-    # arglist.display = True
+    arglist.save_dir = "./"+arglist.exp_name +"_policy/" + arglist.exp_name
     train(arglist)
