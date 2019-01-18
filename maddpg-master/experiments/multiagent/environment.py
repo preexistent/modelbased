@@ -44,7 +44,8 @@ class MultiAgentEnv(gym.Env):
             total_action_space = []
             # physical action and rotation space
             if self.discrete_action_space:
-                u_action_space = spaces.Discrete(world.dim_p * 3 + 1)
+                # u_action_space = spaces.Discrete(world.dim_p * 3 + 1)
+                u_action_space = spaces.Discrete(4)
             else:
                 u_action_space = spaces.Box(low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,),
                                             dtype=np.float32)
@@ -86,6 +87,8 @@ class MultiAgentEnv(gym.Env):
         done_n = []
         info_n = {'n': []}
         self.agents = self.world.policy_agents
+        v_mag = 0.1
+        w_mag = 0.1
 
         list_marks = list(range(len(self.world.landmarks)))
         for i, agent in enumerate(self.agents):
@@ -109,17 +112,32 @@ class MultiAgentEnv(gym.Env):
                                                             goal_pose.state.p_pos[1],
                                                             agent.state.p_pos[0],
                                                             agent.state.p_pos[1])
-                    speed_x = v_mag * cos(heading)
-                    speed_y = v_mag * sin(heading)
-                    mass = 1
-                    dt = 0.1
-                    action_x = 0.11*(speed_x - agent.state.p_vel[0])*mass/dt
-                    action_y = 0.11*(speed_y - agent.state.p_vel[1])*mass/dt
+                    # v_mag = 0.1
+                    # w_mag = 0.1
+                    agent.state.p_angle = heading
+                    idx = np.argmax(np.array(action_n[i]))
+                    if idx == 0:
+                        agent.p_vel = v_mag
+                    elif idx == 1:
+                        agent.p_vel = v_mag
+                    elif idx == 2:
+                        agent.p_vel = v_mag
+                    elif idx == 3:
+                        agent.p_vel = 0
 
-                    action_n[i][1] = action_x
-                    action_n[i][2] = 0
-                    action_n[i][3] = action_y
-                    action_n[i][4] = 0
+                    # speed_x = agent.p_vel * cos(heading)
+                    # speed_y = agent.p_vel * sin(heading)
+                    # speed_x = v_mag * cos(heading)
+                    # speed_y = v_mag * sin(heading)
+                    # mass = 1
+                    # dt = 0.1
+                    # action_x = 0.11*(speed_x - agent.state.p_vel[0])*mass/dt
+                    # action_y = 0.11*(speed_y - agent.state.p_vel[1])*mass/dt
+
+                    # action_n[i][1] = action_x
+                    # action_n[i][2] = 0
+                    # action_n[i][3] = action_y
+                    # action_n[i][4] = 0
                 else:
                     least_dist = np.inf
                     idx = -1
@@ -145,40 +163,89 @@ class MultiAgentEnv(gym.Env):
                                                             agent.state.p_pos[0],
                                                             agent.state.p_pos[1])
 
-                        speed_x = v_mag * cos(heading)
-                        speed_y = v_mag * sin(heading)
-                        mass = 1
-                        dt = 0.1
-                        action_x = 0.11 * (speed_x - agent.state.p_vel[0]) * mass / dt
-                        action_y = 0.11 * (speed_y - agent.state.p_vel[1]) * mass / dt
+                        # speed_x = v_mag * cos(heading)
+                        # speed_y = v_mag * sin(heading)
+                        # mass = 1
+                        # dt = 0.1
+                        # action_x = 0.11 * (speed_x - agent.state.p_vel[0]) * mass / dt
+                        # action_y = 0.11 * (speed_y - agent.state.p_vel[1]) * mass / dt
 
-                        action_n[i][1] = action_x
-                        action_n[i][2] = 0
-                        action_n[i][3] = action_y
-                        action_n[i][4] = 0
+                        # action_n[i][1] = action_x
+                        # action_n[i][2] = 0
+                        # action_n[i][3] = action_y
+                        # action_n[i][4] = 0
+                        # v_mag = 0.1
+                        # w_mag = 0.1
+                        agent.state.p_angle = np.array(heading)
+                        # idx = np.argmax(np.array(action_n[i]))
+                        # if idx == 0:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 1:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 2:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 3:
+                        #     agent.state.p_vel = 0
+                        agent.state.p_vel += action_n[i][0] - action_n[i][1]
+                        agent.state.p_vel = max(agent.state.p_vel, 0)
                     else:
                         print("3")
                         heading = desired_heading
 
-                        speed_x = v_mag * cos(heading)
-                        speed_y = v_mag * sin(heading)
-                        mass = 1
-                        dt = 0.1
-                        action_x = 0.1*(speed_x - agent.state.p_vel[0])*mass/dt
-                        action_y = 0.1*(speed_y - agent.state.p_vel[1])*mass/dt
+                        # v_mag = 0.1
+                        # w_mag = 0.1
+                        agent.state.p_angle = np.array(heading)
+                        # idx = np.argmax(np.array(action_n[i]))
+                        agent.state.p_vel += action_n[i][0] - action_n[i][1]
+                        agent.state.p_vel = max(agent.state.p_vel, 0)
+                        # if idx == 0:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 1:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 2:
+                        #     agent.state.p_vel = v_mag
+                        # elif idx == 3:
+                        #     agent.state.p_vel = 0
 
-                        action_n[i][1] = action_x
-                        action_n[i][2] = 0
-                        action_n[i][3] = action_y
-                        action_n[i][4] = 0
+                        # speed_x = v_mag * cos(heading)
+                        # speed_y = v_mag * sin(heading)
+                        # mass = 1
+                        # dt = 0.1
+                        # action_x = 0.1*(speed_x - agent.state.p_vel[0])*mass/dt
+                        # action_y = 0.1*(speed_y - agent.state.p_vel[1])*mass/dt
+
+                        # action_n[i][1] = action_x
+                        # action_n[i][2] = 0
+                        # action_n[i][3] = action_y
+                        # action_n[i][4] = 0
             else:
                 #print("4")
-                agent.color = agent.color = np.array([0.35, i/10, 0.0])
-                action_n[i] = action_n[i]
+                # v_mag = 0.1
+                # w_mag = 0.1
+                # if action_n[i] == [1,0,0,0]:
+                # idx = np.argmax(np.array(action_n[i]))
+                # if idx == 0:
+                #     agent.state.p_vel = v_mag
+                #     # agent.state.p_angle += w_mag
+                # elif idx == 1:
+                #     agent.state.p_vel = v_mag
+                #     # agent.state.p_angle -= w_mag
+                # elif idx == 2:
+                #     agent.state.p_vel = 2*v_mag
+                # elif idx == 3:
+                #     agent.state.p_vel = 0
+                # agent.state.p_angle = action_n[i][0] - action_n[i][1]
+                agent.state.p_vel += action_n[i][0] - action_n[i][1]
+                agent.state.p_vel = max(agent.state.p_vel, 0)
+                value = action_n[i][2] - action_n[i][3]
+                minval = - np.pi / 3
+                maxval = np.pi / 3
+                agent.state.p_angle += sorted((minval, value, maxval))[1]
+                # action_n[i] = action_n[i]
 
         # set action for each agent
-        for i, agent in enumerate(self.agents):
-            self._set_action(action_n[i], agent, self.action_space[i])
+        # for i, agent in enumerate(self.agents):
+            # self._set_action(action_n[i], agent, self.action_space[i])
         # advance world state
         self.world.step()
         # record observation for each agent

@@ -24,14 +24,12 @@ class Scenario(BaseScenario):
             agent.size = 0.1
         # add goals
         world.landmarks = [Landmark() for i in range(world.num_goals+world.num_obstacles)]
-        p_vel = 0
         p_angle = np.random.uniform(size=1)
         for i, landmark in enumerate(world.landmarks):
             if i <world.num_goals:
                 landmark.name = 'goal %d' %i
                 landmark.collide = False
                 landmark.movable = False
-                landmark.state.p_vel = p_vel
                 landmark.state.p_angle = p_angle
             else:
                 landmark.size = 0.12
@@ -56,6 +54,7 @@ class Scenario(BaseScenario):
 
         # random properties for landmarks
         landmark_angle = np.random.uniform(0, 2*math.pi, 1)
+        # p_angle = np.random.uniform(size=1)
         for i, landmark in enumerate(world.landmarks):
             landmark.state.p_pos = pos_array[world.num_agents+i]
             if i <world.num_goals:
@@ -70,7 +69,6 @@ class Scenario(BaseScenario):
                 landmark.color = np.array([0., 0., .35])
                 landmark.color_ind = np.array([1,0])
                 landmark.size = 0.12
-
         # set random initial states
         # for agent in world.agents:
         #     agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
@@ -186,11 +184,12 @@ class Scenario(BaseScenario):
         for i, entity in enumerate(world.landmarks):
             if i < world.num_goals:
                 #print("entity angle : {}, agent angle : {}".format(entity.state.p_angle, agent.state.p_angle))
-                # temp_angle = np.append(entity.state.p_angle-agent.state.p_angle, 0)
-                temp_angle = entity.state.p_angle-agent.state.p_angle
+                temp_angle = np.append(entity.state.p_angle-agent.state.p_angle, 0)
+                # temp_angle = entity.state.p_angle-agent.state.p_angle
                 entity_angle.append(temp_angle)
 
-        return np.concatenate([agent.state.p_vel] + entity_angle +entity_color+[agent.state.p_pos] + [agent.state.p_angle] + entity_pos +  other_pos )
+        # return np.concatenate(np.array([agent.state.p_vel]) + entity_angle +entity_color+[agent.state.p_pos] + [agent.state.p_angle] + entity_pos +  other_pos )
+        return np.concatenate([np.append(np.array(agent.state.p_vel),0)] + entity_angle +entity_color+[agent.state.p_pos] + [np.append(np.array(agent.state.p_angle),0)] + entity_pos +  other_pos )
 # def assign_pos(number):
 #     pos = np.zeros((number,2))
 #     pos_y_choice = np.linspace(-1,1,num=number)

@@ -1,6 +1,8 @@
 import numpy as np
+import time
 from math import pow, atan2, sqrt, cos, sin, atan, asin
 import dubins
+
 
 # physical/external base state of all entites
 class EntityState(object):
@@ -100,7 +102,7 @@ class Agent(Entity):
         self._omega = {}
         self.VX = {}
         self.present_temp_h = None
-        self.NR = 0.5
+        self.NR = 2
         self._distance = None
         self._least_distance = 10
         self.num = None
@@ -155,22 +157,30 @@ class World(object):
         # gather forces applied to entities
         p_force = [None] * len(self.entities)
         p_rot_force = [None]*len(self.entities)
+        
         # apply agent physical controls
-        p_force, p_rot_force = self.apply_action_force(p_force, p_rot_force)
-        # apply environment forces
-        p_force = self.apply_environment_force(p_force)
-        # integrate physical state
-        self.integrate_state(p_force, p_rot_force)
-        # update agent state
-        for agent in self.agents:
-            self.update_agent_state(agent)
+        
+        # p_force, p_rot_force = self.apply_action_force(p_force, p_rot_force)
+        # # apply environment forces
+        # p_force = self.apply_environment_force(p_force)
+
+    
+        self.integrate_state(0, 0)
+    
+
+            
+        
+
+
+
+
 
     # update global agent and obstacles information
     def update_agents_msg(self, agent):
         for cur_agent in self.agents:
             if agent.name != cur_agent.name:
-                pose_updated = [cur_agent.state.p_pos[0], cur_agent.state.p_pos[1], atan2(cur_agent.state.p_vel[1],cur_agent.state.p_vel[0]),
-                                np.sqrt(np.sum(np.asarray(cur_agent.state.p_vel) ** 2))]
+                pose_updated = [cur_agent.state.p_pos[0], cur_agent.state.p_pos[1], cur_agent.state.p_angle,
+                                cur_agent.state.p_vel]
                 agent.all_agents_pose_dict.update({cur_agent.name: pose_updated})
         for obst in self.landmarks:
             pose_updated = [obst.state.p_pos[0], obst.state.p_pos[1], 0, 0]
@@ -179,16 +189,17 @@ class World(object):
     def update_rvo(self, agent):
         self.update_agents_msg(agent)
         # define velocity magnitude
-        v_mag = sqrt(pow((agent.state.p_vel[0]), 2) + pow((agent.state.p_vel[1]), 2))
+        v_mag = agent.state.p_vel
         rr = 4
-        r = 0.28
+        r = 0.4
         #calc the relative velocity of the agent and choosen other agent
         agent._rel_heading = {}
         agent.point_to_agent_heading = {}
         agent._omega = {}
         agent.VX = {}
-        angle = atan2(agent.state.p_vel[1], agent.state.p_vel[0])
-        agent.present_temp_h = round(angle,rr)
+        angle = agent.state.p_angle
+    
+        agent.present_temp_h = np.round(angle,rr)
 
         #neighbouring region is a circle of 3 units
 
@@ -243,25 +254,41 @@ class World(object):
                         agent._least_distance = agent._distance
 
         v_mag = (agent._least_distance/3)/agent.NR*1.5
-        v_mag = min(v_mag, 0.8)
+        v_mag = 0.3
 
         return v_mag
 
     # Returns True when called if the agent is on collision course
     def collision(self, agent):
-        angle = atan2(agent.state.p_vel[1], agent.state.p_vel[0])
+        angle = agent.state.p_angle
         if(self.in_RVO(angle, agent) == True):
             #if True, return True. Else, False.
             return True
         return False
 
-    def in_RVO(self,h , agent):
+    def in_RVO(self, h, agent):
         #use sets for optimized code using "if h in self.RVO"
         #print(agent.RVO)
-        for i in agent.RVO:
-            if(agent.RVO[i][0] < h < agent.RVO[i][1]):
+        for i in agent.VX:
+            #print (i)
+            #time.sleep(0.5)
+            h_x = 0.3* cos(h)
+            h_y =  0.3* sin(h)
+            #if True:
+            if 'obstacle' in i:
+                angle_compare_x = h_x-agent.all_agents_pose_dict[i][3] * cos(agent.all_agents_pose_dict[i][2])
+                angle_compare_y = h_y-agent.all_agents_pose_dict[i][3] * sin(agent.all_agents_pose_dict[i][2])
+                angle_compare  =  round(atan2(angle_compare_y,angle_compare_x),3)
+
+            else:
+                angle_compare_x = 2*h_x-agent.state.p_vel*cos(agent.state.p_angle)-agent.all_agents_pose_dict[i][3] * cos(agent.all_agents_pose_dict[i][2])
+                angle_compare_y = 2*h_y-agent.state.p_vel*sin(agent.state.p_angle)-agent.all_agents_pose_dict[i][3] * sin(agent.all_agents_pose_dict[i][2])
+                angle_compare  =  round(atan2(angle_compare_y,angle_compare_x),3)
+            if(agent.VX[i][0] < angle_compare < agent.VX[i][1]):
+               # print('-------------')
                 return True
                 break
+        #print('-------------')
         return False
         # Returns a new velocity that is outside RVO
 
@@ -273,32 +300,44 @@ class World(object):
 
         # if not available, self.inside will return None.
         best_min = None
+        delete_index = []
+        for i in range(len(_headings_array)):
+            if(self.in_RVO(_headings_array[i] , agent) == True):
+                delete_index.append(i)
+        _headings_array = np.delete(_headings_array,delete_index)
+                
 
         # Find the nearest heading that is outside the VO
-        temp_array_marginals = np.array([])
+        # temp_array_marginals = np.array([])
 
-        for i in agent.RVO:
-            temp_array_marginals = np.append(temp_array_marginals, agent.RVO[i])
-            # self.temp_temp_temp = self.RVO[i][0]
-        _h = np.round(temp_array_marginals, rr)
+        # for i in agent.VX:
+        #     temp_array_marginals = np.append(temp_array_marginals, agent.VX[i])
+        #     # self.temp_temp_temp = self.RVO[i][0]
+        # _h = np.round(temp_array_marginals, rr)
 
-        # defining possible headings with a resolution of 0.01
-        for i in range(len(_h)):
-            if (i % 2 == 0):
-                k = _h[i] + incr
-                while (k < np.round(_h[i + 1], rr)):
-                    # if(len(self._h) >1):
-                    _headings_array = np.delete(_headings_array,
-                                                     np.where(_headings_array == np.round(k, rr)))
-                    k += incr
+
+        # # defining possible headings with a resolution of 0.01
+        # for i in range(len(_h)):
+        #     if (i % 2 == 0):
+        #         k = _h[i] + incr
+        #         while (k < np.round(_h[i + 1], rr)):
+        #             if(len(_h)==1):
+        #                 break
+        #             # if(len(self._h) >1):
+        #             _headings_array = np.delete(_headings_array,
+        #                                              np.where(_headings_array == np.round(k, rr)))
+        #             k += incr
         # choosing heading nearest to goal heading
         # self._min_time_collision = self.time_to_collision(min(self.time_to_collision, key = self.time_to_collision.get))
         # self._min_time_collision = min(self.time_to_collision.items(), key=lambda x: x[1])
+        if(len(_headings_array)==0):
+            best_min = desired_heading 
+            return best_min
         idx = np.abs(_headings_array - desired_heading).argmin()
         # self.idx = (np.abs(self._headings_array - self.desired_heading) + 0.01/(self._min_time_collision+0.0001)).argmin()
         # choose whether left or right side is the nearest and then assign
-
-        best_min = _headings_array[(idx - 1) % len(_headings_array)]
+        best_min = _headings_array[idx]
+        #best_min = _headings_array[(idx - 1) % len(_headings_array)]
         """print("RVO is :")
         print(_headings_array)
         print("===")
@@ -340,73 +379,34 @@ class World(object):
 
     # integrate physical state
     def integrate_state(self, p_force, p_rot_force):
-        for i,entity in enumerate(self.entities):
-            if not entity.movable: continue
-            entity.state.p_vel = entity.state.p_vel * (1 - self.damping)
-            entity.state.p_angle_vel = entity.state.p_angle_vel*(1-self.damping)
-            if (p_force[i] is not None):
-                entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
-                entity.state.p_angle_vel += (p_rot_force[i] / entity.momentum_mass) * self.dt
-            if entity.max_speed is not None:
-                speed = np.sqrt(np.square(entity.state.p_vel[0]) + np.square(entity.state.p_vel[1]))
-                if speed > entity.max_speed:
-                    entity.state.p_vel = entity.state.p_vel / np.sqrt(np.square(entity.state.p_vel[0]) +
-                                                                  np.square(entity.state.p_vel[1])) * entity.max_speed
-            entity.state.p_pos += entity.state.p_vel * self.dt
-            entity.state.p_angle += (entity.state.p_angle_vel * self.dt)
-            if entity.state.p_angle > 0:
-                entity.state.p_angle = entity.state.p_angle%(2*np.pi)
-            else:
-                entity.state.p_angle = -(-entity.state.p_angle%(2*np.pi)) + 2*np.pi
+            for i,entity in enumerate(self.entities):
+                if not entity.movable: continue
+                if entity.max_speed is not None:
+                    speed = entity.state.p_vel 
+                    if speed > entity.max_speed:
+                        speed =  entity.max_speed
+                else:
+                    speed = entity.state.p_vel 
+                if entity.state.p_angle > 0:
+                    entity.state.p_angle = entity.state.p_angle%(2*np.pi)
+                else:
+                    entity.state.p_angle = -(-entity.state.p_angle%(2*np.pi)) + 2*np.pi    
+                
+                entity.state.p_pos[0] += speed * np.cos(entity.state.p_angle-1.57)*self.dt
+                entity.state.p_pos[1] += speed * np.sin(entity.state.p_angle- 1.57)*self.dt
 
-    """def integrate_state(self, p_force, p_rot_force):
-        for i, entity in enumerate(self.entities):
 
-            if not entity.movable: continue
-            entity.state.p_vel = entity.state.p_vel * (1 - self.damping)
-            entity.state.p_angle_vel = entity.state.p_angle_vel * (1 - self.damping)
-            if (p_force is not None):
-                entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
-                entity.state.p_angle_vel += (p_rot_force[i] / entity.momentum_mass) * self.dt
-            if entity.max_speed is not None:
-                speed = np.sqrt(np.square(entity.state.p_vel[0]) + np.square(entity.state.p_vel[1]))
-                if speed > entity.max_speed:
-                    entity.state.p_vel = entity.state.p_vel / np.sqrt(np.square(entity.state.p_vel[0]) +
-                                                                      np.square(
-                                                                          entity.state.p_vel[1])) * entity.max_speed
+ 
+    
 
-            q0 = (entity.state.p_pos[0], entity.state.p_pos[1], entity.state.p_angle)
-            q1 = (entity.state.p_vel[0] * self.dt, entity.state.p_vel[1] * self.dt, entity.state.p_angle_vel * self.dt)
-            r = entity.size
-            s = 10
-
-            path = dubins.shortest_path(q0, q1, r)
-            configurations, _ = path.sample_many(s)
-            #pdb.set_trace()
-
-            for i in range(len(configurations)):
-                entity.state.p_pos[0] += configurations[i][0]
-                entity.state.p_pos[1] += configurations[i][1]
-                entity.state.p_angle += configurations[i][2]
-            if entity.state.p_angle > 0:
-                entity.state.p_angle = entity.state.p_angle % (2 * np.pi)
-            else:
-                entity.state.p_angle = -(-entity.state.p_angle % (2 * np.pi)) + 2 * np.pi
-
-            entity.state.p_pos += entity.state.p_vel * self.dt
-            entity.state.p_angle += (entity.state.p_angle_vel * self.dt)
-            # if entity.state.p_angle > 0:
-            #    entity.state.p_angle = entity.state.p_angle%(2*np.pi)
-            # else:
-            #    entity.state.p_angle = -(-entity.state.p_angle%(2*np.pi)) + 2*np.pi
-        """
+   
     def update_agent_state(self, agent):
         # set communication state (directly for now)
         if agent.silent:
             agent.state.c = np.zeros(self.dim_c)
         else:
             noise = np.random.randn(*agent.action.c.shape) * agent.c_noise if agent.c_noise else 0.0
-            agent.state.c = agent.action.c + noise      
+            agent.state.c = agent.action.c + noise   
 
     # get collision forces for any contact between two entities
     def get_collision_force(self, entity_a, entity_b):

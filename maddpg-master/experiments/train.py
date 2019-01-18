@@ -11,7 +11,7 @@ import tensorflow.contrib.layers as layers
 def parse_args():
     parser = argparse.ArgumentParser("Reinforcement Learning experiments for multiagent environments")
     # Environment
-    parser.add_argument("--scenario", type=str, default="capt_Wu2", help="name of the scenario script")
+    parser.add_argument("--scenario", type=str, default="capt_homo", help="name of the scenario script")
     parser.add_argument("--max-episode-len", type=int, default=50, help="maximum episode length")
     parser.add_argument("--num-episodes", type=int, default=200000, help="number of episodes")
     parser.add_argument("--num-adversaries", type=int, default=0, help="number of adversaries")
@@ -129,6 +129,7 @@ def train(arglist):
         while True:
             # get action
             action_n = [agent.action(obs) for agent, obs in zip(trainers,obs_n)]
+            # action_n[0] = [1,0,0,0] 
 
             if use_rvo_range < 0:
                 new_obs_n, rew_n, done_n, info_n = env.step(action_n, use_rvo=None)
@@ -242,5 +243,10 @@ def train(arglist):
 
 if __name__ == '__main__':
     arglist = parse_args()
+    arglist.max_episode_len = 30
+    arglist.save_rate = 10
+    arglist.num_episodes = 50
+    arglist.exp_name = 'capt_homo'
     arglist.save_dir = "./"+arglist.exp_name +"_policy/" + arglist.exp_name
+    arglist.display = True
     train(arglist)
