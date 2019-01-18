@@ -115,15 +115,17 @@ class MultiAgentEnv(gym.Env):
                     # v_mag = 0.1
                     # w_mag = 0.1
                     agent.state.p_angle = heading
-                    idx = np.argmax(np.array(action_n[i]))
-                    if idx == 0:
-                        agent.p_vel = v_mag
-                    elif idx == 1:
-                        agent.p_vel = v_mag
-                    elif idx == 2:
-                        agent.p_vel = v_mag
-                    elif idx == 3:
-                        agent.p_vel = 0
+                    # idx = np.argmax(np.array(action_n[i]))
+                    # if idx == 0:
+                    #     agent.p_vel = v_mag
+                    # elif idx == 1:
+                    #     agent.p_vel = v_mag
+                    # elif idx == 2:
+                    #     agent.p_vel = v_mag
+                    # elif idx == 3:
+                    #     agent.p_vel = 0
+                    agent.state.p_vel += action_n[i][0] - action_n[i][1]
+                    agent.state.p_vel = max(agent.state.p_vel, 0)
 
                     # speed_x = agent.p_vel * cos(heading)
                     # speed_y = agent.p_vel * sin(heading)
